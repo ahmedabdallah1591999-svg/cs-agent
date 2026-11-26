@@ -21,7 +21,7 @@ dialog form{display:block;padding:0}dialog{padding:16px}.kr{display:flex;gap:8px
 <form id="f"><textarea id="t" rows="1" placeholder="اكتب رسالة العميل أو سؤالك..."></textarea><button>إرسال</button></form>
 <dialog id="d"><form method="dialog" id="df">
 <label>مفتاح Gemini API (بيتخزن على جهازك بس)</label><div class="kr"><input id="k" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr"><button type="button" class="g" id="sh">إظهار</button><button type="button" class="g" id="pa">لصق</button></div>
-<label>الموديل</label><input id="mo" dir="ltr" placeholder="gemini-2.5-flash">
+<label>الموديل</label><input id="mo" dir="ltr" placeholder="gemini-3.8-flash">
 <label>تعليمات إضافية عن شركتك (سياسات، أسعار، نبرة)</label><textarea id="co" rows="5"></textarea>
 <button>حفظ</button></form></dialog>
 <script>
@@ -34,7 +34,7 @@ Never invent company policies, prices or order data: say what you need or use a 
 let hist=S.hist||[];
 function add(c,t){const d=document.createElement('div');d.className='m '+c;d.textContent=t;$('log').append(d);$('log').scrollTop=1e9;return d}
 hist.forEach(h=>add(h.role=='user'?'u':'a',h.parts[0].text));
-$('set').onclick=()=>{$('k').value=S.key||'';$('mo').value=S.model||'';$('co').value=S.co||'';$('d').showModal()};
+$('set').onclick=()=>{$('k').value=S.key||'';$('mo').value=S.model||'gemini-3.8-flash';$('co').value=S.co||'';$('d').showModal()};
 $('df').onsubmit=()=>{S.key=$('k').value.trim();S.model=$('mo').value.trim();S.co=$('co').value;save()};
 $('sh').onclick=()=>{const k=$('k'),h=k.type=='password';k.type=h?'text':'password';$('sh').textContent=h?'إخفاء':'إظهار'};
 $('pa').onclick=async()=>{try{$('k').value=(await navigator.clipboard.readText()).trim()}catch(x){alert('اضغط مطولًا على الخانة واختار لصق')}};
@@ -42,7 +42,7 @@ $('clr').onclick=()=>{hist=[];S.hist=[];save();$('log').innerHTML=''};
 $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)return;
  if(!S.key){$('set').click();return}
  $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});const w=add('a','...');
- try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${S.model||'gemini-2.5-flash'}:generateContent`,
+ try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${S.model||'gemini-3.8-flash'}:generateContent`,
   {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
   body:JSON.stringify({systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents:hist.slice(-30)})});
   const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);

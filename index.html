@@ -42,12 +42,17 @@ $('clr').onclick=()=>{hist=[];S.hist=[];save();$('log').innerHTML=''};
 $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)return;
  if(!S.key){$('set').click();return}
  $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});const w=add('a','...');
- try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${S.model||'gemini-3.8-flash'}:generateContent`,
-  {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
-  body:JSON.stringify({systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents:hist.slice(-30)})});
-  const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);
+ try{let r,j;for(let attempt=0;attempt<4;attempt++){
+  r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${S.model||'gemini-3.8-flash'}:generateContent`,
+   {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
+   body:JSON.stringify({systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents:hist.slice(-30)})});
+  j=await r.json();if(r.ok)break;
+  const busy=(r.status===429||r.status===503)&&/high demand|overloaded|resource exhausted|try again later|temporar/i.test(j.error?.message||'');
+  if(!busy||attempt===3)throw new Error(busy?'busy':(j.error?.message||r.status));
+  await new Promise(resolve=>setTimeout(resolve,1000*(2**attempt)));
+ }
   const a=j.candidates?.[0]?.content?.parts?.map(p=>p.text).join('')||'(no reply)';
   w.textContent=a;hist.push({role:'model',parts:[{text:a}]});S.hist=hist.slice(-30);save()}
- catch(x){w.className='m e';w.textContent='خطأ: '+x.message;hist.pop()}};
+ catch(x){w.className='m e';w.textContent=x.message==='busy'?'الخدمة عليها ضغط حاليًا. استنى دقيقة وجرّب تاني.':'خطأ: '+x.message;hist.pop()}};
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

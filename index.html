@@ -16,7 +16,7 @@ dialog input,dialog textarea,dialog select{width:100%;margin:6px 0 12px;padding:
 label{display:block;font-size:14px;color:#94a3b8}
 dialog form{display:block;padding:0}dialog{padding:16px}.kr{display:flex;gap:8px;margin:6px 0 12px}.kr input{margin:0;flex:1;min-width:0}.kr button{padding:10px}#ms{display:none}#ls{font-size:13px;color:#94a3b8;margin:-6px 0 12px;min-height:16px}.mm{font-size:12px;opacity:.7;margin-top:6px;direction:ltr;text-align:left}#df>button{width:100%}
 </style></head><body>
-<header><b>🎧 خبير خدمة العملاء</b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
+<header><b>🎧 خبير خدمة العملاء <span id="vb" style="font-size:11px;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:1px 6px;vertical-align:middle">v7</span></b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
 <div id="log"></div>
 <form id="f"><textarea id="t" rows="1" placeholder="اكتب رسالة العميل أو سؤالك..."></textarea><button>إرسال</button></form>
 <dialog id="d"><form method="dialog" id="df">
@@ -47,13 +47,13 @@ $('lm').onclick=async()=>{const key=$('k').value.trim();if(!key){$('ls').textCon
 $('clr').onclick=()=>{hist=[];S.hist=[];save();$('log').innerHTML=''};
 $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)return;
  if(!S.key){$('set').click();return}
- $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});const w=add('a','...');
+ $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});const w=add('a','...');const t0=Date.now();let curM='';const iv=setInterval(()=>{w.textContent='... '+Math.floor((Date.now()-t0)/1000)+'s'+(curM?' ('+curM+')':'')},1000);
  try{let r,j,used,tried=[];const chosen=S.model||DEF;
  let fb=S.models;if(!fb){try{fb=await listModels(S.key);S.models=fb;save()}catch(x){fb=[]}}
  const bad=/image|tts|live|audio|embed|robotics|computer|imagen|veo|aqa|gemma|customtools/i;
  fb=fb.filter(m=>/flash/i.test(m)&&!bad.test(m)&&m!==chosen).sort((a,b)=>/lite/i.test(a)-/lite/i.test(b)).slice(0,5);
  const order=[chosen,...fb];let ok=false,lastErr='';
- for(const m of order){tried.push(m);w.textContent='... ('+m+')';
+ for(const m of order){tried.push(m);curM=m;w.textContent='... 0s ('+m+')';
   for(let attempt=0;attempt<2;attempt++){
    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),45000);
    try{r=await fetch(`${API}models/${m}:generateContent`,
@@ -68,7 +68,7 @@ $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)r
    if(r.status===404||r.status===403||/no longer available|not found|not supported/i.test(msg))break;
    throw new Error(msg)}
   if(ok)break}
- if(!ok)throw new Error('busy');
+ if(!ok)throw new Error(/timeout/i.test(lastErr)?'انتهت مهلة الطلب (45 ثانية) في كل المحاولات. الشبكة أو الخدمة بطيئة.':'busy');
   const ex=j=>{let t='';const pf=j.promptFeedback;const cs=Array.isArray(j.candidates)?j.candidates:[];
    for(const c of cs){const ps=c.content?.parts||[];for(const p of ps){if(p&&typeof p.text==='string'&&!p.thought)t+=p.text}}
    if(!t&&Array.isArray(j.outputs))for(const o of j.outputs){if(o&&typeof o.text==='string'&&o.type!=='thought')t+=o.text}
@@ -76,9 +76,9 @@ $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)r
    if(!t&&typeof j.text==='string')t=j.text;
    const c0=cs[0]||{};const d='finishReason='+(c0.finishReason||'-')+'; block='+(pf?.blockReason||'-')+'; candidates='+cs.length+'; parts='+((c0.content?.parts||[]).map(p=>Object.keys(p).join('+')).join(',')||'-')+'; keys='+Object.keys(j).join(',')+'; raw='+JSON.stringify(j).slice(0,400);
    return{t:t.trim(),d}};
-  const px=ex(j);const a=px.t||('(الرد فاضي) '+px.d);
+  clearInterval(iv);const px=ex(j);const a=px.t||('(الرد فاضي) '+px.d);
   w.textContent=a;const lb=document.createElement('div');lb.className='mm';lb.textContent=(used===chosen?'model: ':'fallback model: ')+used;w.append(lb);if(px.t)hist.push({role:'model',parts:[{text:a}]});else hist.pop();S.hist=hist.slice(-30);save()}
- catch(x){w.className='m e';w.textContent=x.message==='busy'?'الخدمة عليها ضغط حاليًا. استنى دقيقة وجرّب تاني.':'خطأ: '+x.message;hist.pop()}};
-if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+ catch(x){clearInterval(iv);w.className='m e';w.textContent=x.message==='busy'?'الخدمة عليها ضغط حاليًا. استنى دقيقة وجرّب تاني.':'خطأ: '+x.message;hist.pop()}};
+if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!window.__r){window.__r=1;location.reload()}})}
 </script></body></html>
 

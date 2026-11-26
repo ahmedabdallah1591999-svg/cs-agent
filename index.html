@@ -9,16 +9,24 @@ button.g{background:#334155;color:#e2e8f0}
 #log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
 .m{max-width:88%;padding:10px 14px;border-radius:14px;white-space:pre-wrap;line-height:1.55}
 .u{align-self:flex-start;background:#38bdf8;color:#0f172a}.a{align-self:flex-end;background:#1e293b}.e{align-self:center;background:#7f1d1d}
-form{display:flex;gap:8px;padding:10px;background:#1e293b}
-textarea{flex:1;resize:none;border:0;border-radius:12px;padding:10px;font:inherit;background:#0f172a;color:#e2e8f0;max-height:120px}
+.f{align-self:center;background:#164e63;border:1px solid #38bdf8}
+.f a{color:#e2e8f0;text-decoration:none;font-weight:600;display:block}
+.f small{display:block;color:#94a3b8;font-weight:400;margin-top:4px}
+form{display:flex;gap:8px;padding:10px;background:#1e293b;flex-wrap:wrap}
+textarea{flex:1;resize:none;border:0;border-radius:12px;padding:10px;font:inherit;background:#0f172a;color:#e2e8f0;max-height:120px;min-width:0}
+#chips{display:none;width:100%;gap:6px;flex-wrap:wrap}
+.chip{display:flex;align-items:center;gap:6px;background:#0f172a;border:1px solid #334155;border-radius:999px;padding:4px 10px;font-size:13px}
+.chip button{background:none;color:#f87171;padding:0 2px;font-weight:700}
 dialog{background:#1e293b;color:#e2e8f0;border:0;border-radius:14px;width:92%;max-width:480px}
 dialog input,dialog textarea,dialog select{width:100%;margin:6px 0 12px;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font:inherit}
 label{display:block;font-size:14px;color:#94a3b8}
 dialog form{display:block;padding:0}dialog{padding:16px}.kr{display:flex;gap:8px;margin:6px 0 12px}.kr input{margin:0;flex:1;min-width:0}.kr button{padding:10px}#ms{display:none}#ls{font-size:13px;color:#94a3b8;margin:-6px 0 12px;min-height:16px}.mm{font-size:12px;opacity:.7;margin-top:6px;direction:ltr;text-align:left}#df>button{width:100%}
 </style></head><body>
-<header><b>🎧 خبير خدمة العملاء <span id="vb" style="font-size:11px;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:1px 6px;vertical-align:middle">v8</span></b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
+<header><b>🎧 خبير خدمة العملاء <span id="vb" style="font-size:11px;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:1px 6px;vertical-align:middle">v9</span></b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
 <div id="log"></div>
-<form id="f"><textarea id="t" rows="1" placeholder="اكتب رسالة العميل أو سؤالك..."></textarea><button>إرسال</button></form>
+<div id="chips"></div>
+<form id="f"><input type="file" id="fi" multiple style="display:none" accept="image/*,audio/*,video/*,.pdf,.docx,.xlsx,.csv,.txt,.md,.json">
+<button type="button" class="g" id="att" title="إرفاق ملف">📎</button><textarea id="t" rows="1" placeholder="اكتب رسالة العميل أو سؤالك..."></textarea><button>إرسال</button></form>
 <dialog id="d"><form method="dialog" id="df">
 <label>مفتاح Gemini API (بيتخزن على جهازك بس)</label><div class="kr"><input id="k" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr"><button type="button" class="g" id="sh">إظهار</button><button type="button" class="g" id="pa">لصق</button></div>
 <label>الموديل</label><input id="mo" dir="ltr" placeholder="gemini-3-flash-preview">
@@ -31,7 +39,19 @@ const save=()=>localStorage.cs=JSON.stringify(S);
 const SYS=`You are the manager and senior expert of a customer-service department. You think like a head of support: team, process, quality and customer outcomes. Reply in the language of the user's message (Egyptian Arabic if they write Arabic colloquially). Be decisive, practical and concise.
 You cover: handling and de-escalating customer complaints and writing ready-to-send replies; hiring, training, scheduling and coaching agents; KPIs and QA (CSAT, NPS, FCR, AHT, SLA); escalation and refund policies; scripts, macros and knowledge base; call-center and chat operations; reporting and improvement plans; handling difficult agents and customers.
 When the user pastes a customer message, give a ready-to-send reply, then one line on tone. When asked for a plan, give clear steps with owners and metrics.
-Accuracy first: never invent numbers, policies, prices or company facts. If you are unsure or data is missing, say so plainly (in Egyptian Arabic when the user writes Arabic) and ask for the missing input. Clearly separate what you know generally from what depends on the user's company policy. Keep answers short and structured. Ask at most one clarifying question when essential.`;
+Accuracy first: never invent numbers, policies, prices or company facts. If you are unsure or data is missing, say so plainly (in Egyptian Arabic when the user writes Arabic) and ask for the missing input. Clearly separate what you know generally from what depends on the user's company policy. Keep answers short and structured. Ask at most one clarifying question when essential.
+The user can attach images, PDFs, audio, video and office/text files. Analyze attached content directly: transcribe or summarize recordings, read screenshots and documents, and answer questions about them. Never claim you cannot see an attachment that was included in the message.
+The app can create real downloadable files for the user: Word (.docx), Excel (.xlsx, also opens in Google Sheets), PDF, and spoken audio (.wav). When the user asks you to prepare, export or generate a document, spreadsheet, PDF or audio file, give a short normal reply first (one or two lines), then append exactly one file block at the very end of your reply in this exact format:
+<<<FILE type="docx" name="report.docx">>>
+content here
+<<<END>>>
+Rules for file blocks:
+- type is one of: docx, xlsx, pdf, audio. The name must end with the matching extension (.docx, .xlsx, .pdf, .wav for audio).
+- docx and pdf content: plain text in the user's language. Use "# " at the start of a line for a main heading, "## " for a subheading, "- " for a bullet. No markdown bold/italics, no tables (use bullets instead).
+- xlsx content: CSV only. First row is the header row. Comma-separated, wrap any field containing a comma or quote in double quotes. Numbers as plain numbers. No commentary inside the block.
+- audio content: only the exact short text to be spoken aloud, in the user's language.
+- Never emit more than one file block per reply. Never emit an empty or truncated block. Put nothing after <<<END>>>.
+- Video generation is NOT available: it needs Google's paid Veo plan and cannot run on a free API key. If the user asks for a video, explain that briefly and honestly (in Egyptian Arabic when they write Arabic), and offer to make a storyboard / shot list / script as a docx or pdf file instead. Never emit a file block for video.`;
 function cleanHist(h){const out=[];for(const e of h||[]){const t=(e&&e.parts&&e.parts[0]&&typeof e.parts[0].text==='string'?e.parts[0].text:'').trim();if(!t)continue;const r=e.role==='model'?'model':'user';
  if(!out.length){if(r!=='user')continue;out.push({role:r,parts:[{text:t}]});continue}
  if(out[out.length-1].role===r)out[out.length-1].parts[0].text+='\n\n'+t;else out.push({role:r,parts:[{text:t}]})}
@@ -49,7 +69,215 @@ function fillSel(){const ms=$('ms');ms.innerHTML='';(S.models||[]).forEach(m=>{c
 $('ms').onchange=()=>{$('mo').value=$('ms').value};
 $('lm').onclick=async()=>{const key=$('k').value.trim();if(!key){$('ls').textContent='الصق المفتاح الأول';return}$('ls').textContent='جاري الجلب...';try{S.models=await listModels(key);save();fillSel();$('ls').textContent='تم: '+S.models.length+' موديل. اختار واحد واضغط حفظ.'}catch(x){$('ls').textContent='فشل الجلب: '+x.message}};
 $('clr').onclick=()=>{hist=[];S.hist=[];save();$('log').innerHTML=''};
-function baseBody(contents){return{systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents,generationConfig:{maxOutputTokens:800}}}
+/* ---------- small utils ---------- */
+function fmtSize(n){if(n<1024)return n+' بايت';if(n<1048576)return (n/1024).toFixed(0)+' كيلوبايت';if(n<1073741824)return (n/1048576).toFixed(1)+' ميجا';return (n/1073741824).toFixed(2)+' جيجا'}
+function escXml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function dl(blob,name){const u=URL.createObjectURL(blob);const d=add('f','');const a=document.createElement('a');a.href=u;a.download=name;a.textContent='⬇️ تحميل '+name;a.append(Object.assign(document.createElement('small'),{textContent:fmtSize(blob.size)+' — اضغط للتحميل'}));d.append(a);return d}
+/* ---------- CRC32 + minimal ZIP writer (stored, no compression) ---------- */
+const CT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c}return t})();
+function crc32(b){let c=~0;for(let i=0;i<b.length;i++)c=CT[(c^b[i])&255]^(c>>>8);return ~c>>>0}
+function zipStore(files){const enc=new TextEncoder();const parts=[],cds=[];let off=0;
+ for(const f of files){const nb=enc.encode(f.name);const data=typeof f.data==='string'?enc.encode(f.data):f.data;const crc=crc32(data);
+  const L=new Uint8Array(30),lv=new DataView(L.buffer);lv.setUint32(0,0x04034b50,true);lv.setUint16(4,20,true);lv.setUint16(6,0x0800,true);lv.setUint32(14,crc,true);lv.setUint32(18,data.length,true);lv.setUint32(22,data.length,true);lv.setUint16(26,nb.length,true);
+  parts.push(L,nb,data);
+  const C=new Uint8Array(46),cv=new DataView(C.buffer);cv.setUint32(0,0x02014b50,true);cv.setUint16(4,20,true);cv.setUint16(6,20,true);cv.setUint16(8,0x0800,true);cv.setUint32(16,crc,true);cv.setUint32(20,data.length,true);cv.setUint32(24,data.length,true);cv.setUint16(28,nb.length,true);cv.setUint32(42,off,true);
+  cds.push(C,nb);off+=30+nb.length+data.length}
+ const cdSize=cds.reduce((s,x)=>s+x.length,0);
+ const E=new Uint8Array(22),ev=new DataView(E.buffer);ev.setUint32(0,0x06054b50,true);ev.setUint16(8,files.length,true);ev.setUint16(10,files.length,true);ev.setUint32(12,cdSize,true);ev.setUint32(16,off,true);
+ return new Blob([...parts,...cds,E],{type:'application/zip'})}
+/* ---------- DOCX maker (Word/Google Docs/LibreOffice) ---------- */
+function parseMd(text){const paras=[];for(const raw of String(text).split(/\r?\n/)){const line=raw.replace(/\s+$/,'');
+  if(!line.trim())continue;let h=0,t=line.trim();
+  if(t.startsWith('## ')){h=2;t=t.slice(3)}else if(t.startsWith('# ')){h=1;t=t.slice(2)}
+  let bullet=false;if(t.startsWith('- ')){bullet=true;t=t.slice(2)}
+  paras.push({h,bullet,t})}
+ return paras}
+function isAr(s){return /[؀-ۿݐ-ݿﭐ-﷿ﹰ-﻿]/.test(s)}
+function makeDocx(text,name){const paras=parseMd(text);const body=paras.map(p=>{
+  const rtl=isAr(p.t);const sz=p.h===1?36:p.h===2?28:24;
+  return '<w:p><w:pPr>'+(rtl?'<w:bidi/>':'')+(p.bullet?'<w:ind w:right="360"/>':'')+'</w:pPr>'+
+   '<w:r><w:rPr><w:rFonts w:ascii="Calibri" w:hAnsi="Calibri" w:cs="Arial"/><w:sz w:val="'+sz+'"/><w:szCs w:val="'+sz+'"/>'+(p.h?'<w:b/><w:bCs/>':'')+(rtl?'<w:rtl/>':'')+'</w:rPr>'+
+   '<w:t xml:space="preserve">'+(p.bullet?'• ':'')+escXml(p.t)+'</w:t></w:r></w:p>'}).join('');
+ const doc='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>'+body+
+  '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440"/></w:sectPr></w:body></w:document>';
+ const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>';
+ const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>';
+ return zipStore([{name:'[Content_Types].xml',data:ct},{name:'_rels/.rels',data:rels},{name:'word/document.xml',data:doc}])}
+/* ---------- XLSX maker (Excel/Google Sheets/LibreOffice) ---------- */
+function colName(i){let s='';i++;while(i>0){const m=(i-1)%26;s=String.fromCharCode(65+m)+s;i=Math.floor((i-1)/26)}return s}
+function parseCsv(text){const rows=[];let row=[],cur='',q=false;const s=String(text);
+ for(let i=0;i<s.length;i++){const c=s[i];
+  if(q){if(c=='"'){if(s[i+1]=='"'){cur+='"';i++}else q=false}else cur+=c}
+  else if(c=='"')q=true;else if(c==','){row.push(cur);cur=''}
+  else if(c=='\n'||c=='\r'){if(c=='\r'&&s[i+1]=='\n')i++;row.push(cur);cur='';rows.push(row);row=[]}
+  else cur+=c}
+ if(cur!==''||row.length){row.push(cur);rows.push(row)}
+ return rows.filter(r=>r.some(x=>String(x).trim()!==''))}
+function makeXlsx(csvText){const rows=parseCsv(csvText);
+ const sheetData=rows.map((r,ri)=>'<row r="'+(ri+1)+'">'+r.map((v,ci)=>{const ref=colName(ci)+(ri+1);const n=Number(v);
+   if(v!==''&&!isNaN(n)&&isFinite(n)&&/^-?[\d.,%\s]+$/.test(v))return '<c r="'+ref+'"><v>'+String(v).replace(/[,\s%]/g,'')+'</v></c>';
+   return '<c r="'+ref+'" t="inlineStr"><is><t xml:space="preserve">'+escXml(v)+'</t></is></c>'}).join('')+'</row>').join('');
+ const sheet='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><outlinePr summaryBelow="1" summaryRight="1"/></sheetPr><sheetViews><sheetView rightToLeft="1" workbookViewId="0"/></sheetViews><sheetData>'+sheetData+'</sheetData></worksheet>';
+ const wb='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Sheet1" sheetId="1" r:id="rId1"/></sheets></workbook>';
+ const wbrels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/></Relationships>';
+ const rels='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>';
+ const ct='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'+
+  '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>';
+ return zipStore([{name:'[Content_Types].xml',data:ct},{name:'_rels/.rels',data:rels},{name:'xl/workbook.xml',data:wb},{name:'xl/_rels/workbook.xml.rels',data:wbrels},{name:'xl/worksheets/sheet1.xml',data:sheet}])}
+/* ---------- ZIP reader (for extracting text from docx/xlsx) ---------- */
+async function unzipEntries(buf){const b=new Uint8Array(buf);const dv=new DataView(buf);
+ if(dv.getUint32(0,true)!==0x04034b50&&dv.getUint32(b.length-22,true)!==0x06054b50)throw new Error('ملف مضغوط غير صالح');
+ let eocd=-1;for(let i=b.length-22;i>=0&&i>b.length-66000;i--){if(dv.getUint32(i,true)===0x06054b50){eocd=i;break}}
+ if(eocd<0)throw new Error('ملف مضغوط غير صالح');
+ const n=dv.getUint16(eocd+10,true);let p=dv.getUint32(eocd+16,true);const out={};
+ for(let i=0;i<n;i++){if(dv.getUint32(p,true)!==0x02014b50)break;
+  const method=dv.getUint16(p+10,true),csz=dv.getUint32(p+20,true),nl=dv.getUint16(p+28,true),el=dv.getUint16(p+30,true),cl=dv.getUint16(p+32,true),lo=dv.getUint32(p+42,true);
+  const name=new TextDecoder().decode(b.slice(p+46,p+46+nl));
+  const lnl=new DataView(buf,lo).getUint16(26,true),lel=new DataView(buf,lo).getUint16(28,true);
+  const raw=b.slice(lo+30+lnl+lel,lo+30+lnl+lel+csz);
+  let data;
+  if(method===0)data=raw;
+  else if(method===8){if(typeof DecompressionStream==='undefined')throw new Error('المتصفح مش بيدعم فك ضغط الملفات — حدّث المتصفح');
+   const ds=new DecompressionStream('deflate-raw');data=new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(ds)).arrayBuffer())}
+  else continue;
+  out[name]=data;p+=46+nl+el+cl}
+ return out}
+function xmlTextOf(u8){return new TextDecoder().decode(u8)}
+async function extractDocxText(buf){const e=await unzipEntries(buf);const x=xmlTextOf(e['word/document.xml']||new Uint8Array());
+ return x.replace(/<w:tab\/>/g,'\t').replace(/<w:br[^>]*\/>/g,'\n').replace(/<\/w:p>/g,'\n').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&amp;/g,'&').replace(/\n{3,}/g,'\n\n').trim()}
+async function extractXlsxText(buf){const e=await unzipEntries(buf);
+ const shared=[];if(e['xl/sharedStrings.xml']){const sx=xmlTextOf(e['xl/sharedStrings.xml']);
+  for(const m of sx.matchAll(/<si>([\s\S]*?)<\/si>/g)){shared.push(m[1].replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&'))}}
+ const lines=[];
+ for(const key of Object.keys(e).filter(k=>/^xl\/worksheets\/sheet\d+\.xml$/.test(k)).sort()){
+  const x=xmlTextOf(e[key]);
+  for(const rm of x.matchAll(/<row[^>]*>([\s\S]*?)<\/row>/g)){const cells=[];
+   for(const cm of rm[1].matchAll(/<c\b([^>]*)>([\s\S]*?)<\/c>/g)){const attrs=cm[1],body=cm[2];let v='';
+    if(/t="s"/.test(attrs)){const vm=body.match(/<v>(\d+)<\/v>/);v=vm?(shared[+vm[1]]||''):''}
+    else if(/t="inlineStr"/.test(attrs)){const tm=body.match(/<t[^>]*>([\s\S]*?)<\/t>/);v=tm?tm[1]:''}
+    else{const vm=body.match(/<v>([\s\S]*?)<\/v>/);v=vm?vm[1]:''}
+    cells.push(v.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&').replace(/,/g,'،'))}
+   if(cells.some(c=>c!==''))lines.push(cells.join(', '))}}
+ return lines.join('\n')}
+/* ---------- PDF maker (jsPDF lazy-loaded from CDN, Amiri font) ---------- */
+let _jspdfP=null,_fontB64=null;
+function loadJsPdf(){if(!_jspdfP)_jspdfP=new Promise((res,rej)=>{const s=document.createElement('script');
+ s.src='https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js';s.onload=()=>res(window.jspdf);s.onerror=()=>rej(new Error('مش قادر أحمّل مكتبة الـ PDF — محتاج نت أول مرة'));document.head.append(s)});return _jspdfP}
+async function loadFont(){if(_fontB64)return _fontB64;
+ const r=await fetch('https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/amiri/Amiri-Regular.ttf');
+ if(!r.ok)throw new Error('مش قادر أحمّل الخط العربي — محتاج نت أول مرة');
+ const b=new Uint8Array(await r.arrayBuffer());let bin='';for(let i=0;i<b.length;i+=8192)bin+=String.fromCharCode.apply(null,b.subarray(i,i+8192));
+ _fontB64=btoa(bin);return _fontB64}
+async function makePdf(text,name){const jspdf=await loadJsPdf();const b64=await loadFont();
+ const doc=new jspdf.jsPDF({unit:'mm',format:'a4'});
+ doc.addFileToVFS('Amiri-Regular.ttf',b64);doc.addFont('Amiri-Regular.ttf','Amiri','normal');doc.setFont('Amiri');
+ const PW=210,PH=297,M=16,CW=PW-2*M;let y=M+4;
+ const newPage=()=>{doc.addPage();y=M+4};
+ for(const p of parseMd(text)){const size=p.h===1?18:p.h===2?15:12.5;doc.setFontSize(size);
+  const rtl=isAr(p.t);const logical=(p.bullet?'• ':'')+p.t;
+  const words=logical.split(' ');const lines=[];let cur='';
+  for(const w of words){const t=cur?cur+' '+w:w;
+   if(doc.getTextWidth(t)<=CW)cur=t;else{if(cur)lines.push(cur);cur=w}}
+  if(cur)lines.push(cur);
+  const lh=size*0.62;
+  for(const ln of lines){if(y+lh>PH-M)newPage();
+   if(rtl)doc.text(ln,PW-M,y,{align:'right'});else doc.text(ln,M,y,{align:'left'});
+   y+=lh}
+  y+=p.h?4:2}
+ return doc.output('blob')}
+/* ---------- WAV writer + Gemini TTS ---------- */
+function wavFromPcm(pcm,rate){const h=new Uint8Array(44),d=new DataView(h.buffer);
+ const ws=(o,s)=>{for(let i=0;i<s.length;i++)h[o+i]=s.charCodeAt(i)};
+ ws(0,'RIFF');d.setUint32(4,36+pcm.length,true);ws(8,'WAVE');ws(12,'fmt ');
+ d.setUint32(16,16,true);d.setUint16(20,1,true);d.setUint16(22,1,true);d.setUint32(24,rate,true);
+ d.setUint32(28,rate*2,true);d.setUint16(32,2,true);d.setUint16(34,16,true);
+ ws(36,'data');d.setUint32(40,pcm.length,true);
+ return new Blob([h,pcm],{type:'audio/wav'})}
+function pickTtsModel(){const t=(S.models||[]).filter(m=>/tts/i.test(m));t.sort((a,b)=>(/flash/i.test(b)?1:0)-(/flash/i.test(a)?1:0));return t[0]||null}
+async function makeAudio(text){const m=pickTtsModel();
+ if(!m)throw new Error('مفيش موديل صوت (TTS) متاح على مفتاحك. افتح ⚙️ واضغط "جلب الموديلات" — ولو مفيش tts في القايمة يبقى توليد الصوت مش متاح لمفتاحك');
+ if([...text].length>3500)throw new Error('النص طويل للصوت — قصّره تحت 3500 حرف');
+ const ac=new AbortController();const tm=setTimeout(()=>ac.abort(),60000);
+ let r;try{r=await fetch(API+'models/'+m+':generateContent',{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
+  body:JSON.stringify({contents:[{role:'user',parts:[{text}]}],generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:'Kore'}}}}})})}
+ catch(e){clearTimeout(tm);throw new Error(e.name==='AbortError'?'توليد الصوت خد وقت طويل (timeout)':'فشل الاتصال: '+e.message)}
+ clearTimeout(tm);const j=await r.json().catch(()=>({}));
+ if(!r.ok)throw new Error((j.error&&j.error.message||('HTTP '+r.status)).slice(0,200));
+ const part=j.candidates&&j.candidates[0]&&j.candidates[0].content&&(j.candidates[0].content.parts||[]).find(p=>p.inlineData);
+ if(!part)throw new Error('الموديل مرجعش صوت');
+ const raw=atob(part.inlineData.data);const b=new Uint8Array(raw.length);for(let i=0;i<raw.length;i++)b[i]=raw.charCodeAt(i);
+ const mt=part.inlineData.mimeType||'';const rate=+((mt.match(/rate=(\d+)/)||[])[1]||24000);
+ if(/wav/i.test(mt))return new Blob([b],{type:'audio/wav'});
+ return wavFromPcm(b,rate)}
+/* ---------- Gemini Files API (large audio/video/pdf) ---------- */
+async function uploadGeminiFile(file,onStatus){onStatus('⏳ برفع "'+file.name+'" ('+fmtSize(file.size)+') على Gemini...');
+ const mime=file.type||'application/octet-stream';
+ const st=await fetch('https://generativelanguage.googleapis.com/upload/v1beta/files',{method:'POST',
+  headers:{'x-goog-api-key':S.key,'X-Goog-Upload-Protocol':'resumable','X-Goog-Upload-Command':'start',
+   'X-Goog-Upload-Header-Content-Length':String(file.size),'X-Goog-Upload-Header-Content-Type':mime,'Content-Type':'application/json'},
+  body:JSON.stringify({file:{display_name:file.name.slice(0,80)}})});
+ if(!st.ok){const t=await st.text().catch(()=> '');throw new Error('فشل بدء الرفع: '+t.slice(0,150))}
+ const up=st.headers.get('x-goog-upload-url');if(!up)throw new Error('فشل بدء الرفع (مفيش upload url)');
+ onStatus('⏳ برفع "'+file.name+'"... ممكن ياخد وقت على حسب الحجم والنت');
+ const r=await fetch(up,{method:'POST',headers:{'X-Goog-Upload-Offset':'0','X-Goog-Upload-Command':'upload, finalize','Content-Type':mime},body:file});
+ const j=await r.json().catch(()=>({}));
+ if(!r.ok||!j.file)throw new Error('فشل الرفع: '+((j.error&&j.error.message)||('HTTP '+r.status)));
+ const f=j.file;let state=f.state,tries=0;
+ while(state==='PROCESSING'&&tries<50){await new Promise(z=>setTimeout(z,3000));tries++;
+  onStatus('⏳ Gemini بيحضّر "'+file.name+'" للتحليل...');
+  const g=await fetch(API+f.name,{headers:{'x-goog-api-key':S.key}});const gj=await g.json().catch(()=>({}));state=gj.state||state}
+ if(state!=='ACTIVE')throw new Error('الملف اترفع بس Gemini لسه بيعالجه — ابعت تاني بعد دقيقة');
+ return{uri:f.uri,mime:f.mimeType||mime}}
+function fileToB64(file){return new Promise((res,rej)=>{const r=new FileReader();
+ r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(new Error('مش قادر أقرا الملف'));r.readAsDataURL(file)})}
+/* ---------- attachments ---------- */
+const INLINE_B64=12*1024*1024,HARD_CAP=200*1024*1024,TEXT_MAX=150000;
+let pending=[];
+function classify(file){const n=file.name.toLowerCase(),mt=(file.type||'').toLowerCase();
+ if(/\.(txt|md|json|csv|log)$/.test(n)||mt.startsWith('text/'))return 'text';
+ if(/\.docx$/.test(n))return 'docx';if(/\.xlsx$/.test(n))return 'xlsx';
+ if(/\.doc$|\.xls$|\.pptx?$/.test(n))return 'old';
+ if(mt.startsWith('image/'))return 'image';if(mt==='application/pdf'||/\.pdf$/.test(n))return 'pdf';
+ if(mt.startsWith('audio/'))return 'audio';if(mt.startsWith('video/'))return 'video';return 'unknown'}
+async function extractAttText(a){let tx;
+ if(a.kind==='text')tx=await a.file.text();
+ else if(a.kind==='docx')tx=await extractDocxText(await a.file.arrayBuffer());
+ else tx=await extractXlsxText(await a.file.arrayBuffer());
+ tx=tx.trim();if(tx.length>TEXT_MAX)tx=tx.slice(0,TEXT_MAX)+'\n...[اتقطع لطول الملف]';
+ if(!tx)throw new Error('مفيش نص اتستخرج من الملف');
+ return tx}
+function renderChips(){const c=$('chips');c.innerHTML='';c.style.display=pending.length?'flex':'none';
+ pending.forEach((a,i)=>{const d=document.createElement('span');d.className='chip';
+  d.append(document.createTextNode('📎 '+a.file.name+' ('+fmtSize(a.file.size)+')'));
+  const x=document.createElement('button');x.type='button';x.textContent='✕';
+  x.onclick=()=>{pending.splice(i,1);renderChips()};d.append(x);c.append(d)})}
+$('att').onclick=()=>$('fi').click();
+$('fi').onchange=()=>{for(const f of $('fi').files){
+  const k=classify(f);
+  if(k==='unknown'||k==='old'){add('e','نوع الملف "'+f.name+'" مش مدعوم. المدعوم: صور، PDF، صوت، فيديو، وملفات نصية/مكتب: txt, csv, docx, xlsx'+(k==='old'?' — الملفات القديمة (.doc/.xls) حوّلها لـ docx/xlsx الأول':''));continue}
+  if(f.size>HARD_CAP){add('e','الملف "'+f.name+'" أكبر من 200 ميجا — قلّل حجمه');continue}
+  if(pending.length>=5){add('e','أقصى عدد مرفقات في الرسالة: 5');break}
+  pending.push({file:f,kind:k,mime:f.type||(k==='pdf'?'application/pdf':'application/octet-stream')})}
+ $('fi').value='';renderChips()};
+/* ---------- file block from model reply ---------- */
+function extractFileBlock(txt){const m=txt.match(/<<<FILE\s+type="(docx|xlsx|pdf|audio)"\s+name="([^"<>]{1,80})">>>([\s\S]*?)<<<END>>>/);
+ if(!m)return null;return{type:m[1],name:m[2].trim(),content:m[3].replace(/^\s+|\s+$/g,''),pre:txt.slice(0,m.index).replace(/\s+$/,'')}}
+async function deliverFile(fb){let blob;const mime={docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',pdf:'application/pdf',audio:'audio/wav'}[fb.type];
+ if(fb.type==='docx')blob=makeDocx(fb.content,fb.name);
+ else if(fb.type==='xlsx')blob=makeXlsx(fb.content);
+ else if(fb.type==='pdf')blob=await makePdf(fb.content,fb.name);
+ else blob=await makeAudio(fb.content);
+ if(!/\.(docx|xlsx|pdf|wav)$/i.test(fb.name))fb.name+={docx:'.docx',xlsx:'.xlsx',pdf:'.pdf',audio:'.wav'}[fb.type];
+ dl(new Blob([blob],{type:mime}),fb.name)}
+/* ---------- model calls ---------- */
+function baseBody(contents){return{systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents,generationConfig:{maxOutputTokens:8192}}}
 async function callModel(m,contents,onTok){
  const b=baseBody(contents);let last;
  for(const tc of[{thinkingBudget:0},{thinkingLevel:'minimal'},null]){
@@ -78,22 +306,35 @@ async function streamCall(m,body,onTok){
   }
  }catch(e){clearTimeout(tm);if(to||e.name==='AbortError')throw toErr('timeout: الرد وقف في النص');throw e}
  clearTimeout(tm);return{text:txt,meta}}
-$('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)return;
+function dispTok(w){return t=>{const i=t.indexOf('<<<FILE');
+ w.textContent=i>=0?t.slice(0,i).replace(/\s+$/,'')+'\n\n⏳ بيحضّر الملف...':t}}
+/* ---------- submit ---------- */
+$('f').onsubmit=async e=>{e.preventDefault();
+ const v=$('t').value.trim();
+ if(!v&&!pending.length)return;
  if(!S.key){$('set').click();return}
- $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});
+ const atts=pending.splice(0);renderChips();$('t').value='';
+ add('u',(v?v+'\n':'')+atts.map(a=>'📎 '+a.file.name+' ('+fmtSize(a.file.size)+')').join('\n'));
  const w=add('a','...');const t0=Date.now();let curM='',streaming=false;
- const iv=setInterval(()=>{if(!streaming)w.textContent='... '+Math.floor((Date.now()-t0)/1000)+'s'+(curM?' ('+curM+')':'')},1000);
+ const iv=setInterval(()=>{if(!streaming&&w.className=='m a')w.textContent=(w.textContent.startsWith('⏳')?w.textContent.split('\n')[0]:'...')+' '+Math.floor((Date.now()-t0)/1000)+'s'+(curM?' ('+curM+')':'')},1000);
  try{
+  const parts=[],notes=[];
+  for(const a of atts){try{
+   if(a.kind==='text'||a.kind==='docx'||a.kind==='xlsx'){parts.push({text:'[محتوى الملف المرفق: '+a.file.name+']\n'+await extractAttText(a)});notes.push(a.file.name)}
+   else if(a.file.size<=INLINE_B64){parts.push({inlineData:{mimeType:a.mime,data:await fileToB64(a.file)}});notes.push(a.file.name)}
+   else{const up=await uploadGeminiFile(a.file,s=>{w.textContent=s});parts.push({fileData:{mimeType:up.mime,fileUri:up.uri}});notes.push(a.file.name)}
+  }catch(x){clearInterval(iv);w.className='m e';w.textContent='فشل تجهيز "'+a.file.name+'": '+x.message;return}}
+  if(v)parts.push({text:v});
   const chosen=S.model||DEF;
   let fb=S.models;if(!fb){try{fb=await listModels(S.key);S.models=fb;save()}catch(x){fb=[]}}
   const bad=/image|tts|live|audio|embed|robotics|computer|imagen|veo|aqa|gemma|customtools/i;
   fb=(fb||[]).filter(m=>/flash/i.test(m)&&!bad.test(m)&&m!==chosen).sort((a,b)=>/lite/i.test(a)-/lite/i.test(b)).slice(0,5);
   if(!fb.length&&chosen!==FB2)fb=[FB2];
-  const order=[chosen,...fb],contents=cleanHist(hist),errs=[];
-  let ok=false,used='',txt='',meta=null;
+  const order=[chosen,...fb];
+  const contents=cleanHist(hist);contents.push({role:'user',parts});
+  const errs=[];let ok=false,used='',txt='',meta=null;
   for(const m of order){curM=m;streaming=false;w.textContent='⏳ بجرب '+m+' ...';
-   try{const r=await callModel(m,contents,t=>{if(!streaming){streaming=true;clearInterval(iv)}w.textContent=t});
-    ok=true;used=m;txt=r.text;meta=r.meta;break}
+   try{const r=await callModel(m,contents,dispTok(w));ok=true;used=m;txt=r.text;meta=r.meta;break}
    catch(x){const msg=(x.status?x.status+' ':'')+String(x.message||x);errs.push(m+' → '+msg);
     if(/api.key|PERMISSION_DENIED|unauthenticated/i.test(msg))break;
     if(x.timeout)w.textContent=m+' مردش خلال 30 ثانية، بجرب موديل تاني...';
@@ -101,14 +342,21 @@ $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)r
     else w.textContent=m+' فشل: '+msg.slice(0,80);
     await new Promise(z=>setTimeout(z,x.status===429||x.status===503?1500:700))}}
   clearInterval(iv);
-  if(!ok){w.className='m e';w.textContent='فشل الرد من كل الموديلات:\n'+errs.join('\n');hist.pop();S.hist=hist;save();return}
-  let a=txt.trim();
-  if(!a){const c0=meta&&meta.candidates&&meta.candidates[0]||{};const pf=meta&&meta.promptFeedback;
+  if(!ok){w.className='m e';w.textContent='فشل الرد من كل الموديلات:\n'+errs.join('\n');return}
+  let a=txt.trim();let fblk=extractFileBlock(a);
+  if(fblk)a=fblk.pre;
+  if(!a&&!fblk){const c0=meta&&meta.candidates&&meta.candidates[0]||{};const pf=meta&&meta.promptFeedback;
    const d='finishReason='+(c0.finishReason||'-')+'; block='+(pf&&pf.blockReason||'-')+'; candidates='+((meta&&meta.candidates||[]).length)+'; raw='+JSON.stringify(meta||{}).slice(0,400);
-   a='(الرد فاضي) '+d;w.textContent=a;hist.pop()}
-  else{w.textContent=a;hist.push({role:'model',parts:[{text:a}]})}
+   a='(الرد فاضي) '+d;w.textContent=a}
+  else w.textContent=a||'✅ جهزت الملف';
   const lb=document.createElement('div');lb.className='mm';lb.textContent=(used===chosen?'model: ':'fallback model: ')+used;w.append(lb);
+  hist.push({role:'user',parts:[{text:(v?v+'\n':'')+(notes.length?'[مرفقات: '+notes.join('، ')+']':'')||v}]});
+  let mtxt=a;
+  if(fblk){try{await deliverFile(fblk);mtxt=(a?a+'\n':'')+'[تم إنشاء ملف: '+fblk.name+']'}
+   catch(x){add('e','فشل إنشاء الملف: '+x.message);mtxt=(a?a+'\n':'')+'[فشل إنشاء الملف: '+fblk.name+']'}}
+  hist.push({role:'model',parts:[{text:mtxt||'(ملف)'}]});
   S.hist=hist.slice(-30);save()}
- catch(x){clearInterval(iv);w.className='m e';w.textContent='خطأ: '+String(x.message||x);hist.pop();S.hist=hist;save()}};
+ catch(x){clearInterval(iv);w.className='m e';w.textContent='خطأ: '+String(x.message||x)}};
+window.__gen={makeDocx,makeXlsx,makePdf,zipStore,unzipEntries,extractDocxText,extractXlsxText,extractFileBlock,parseCsv,wavFromPcm};
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!window.__r){window.__r=1;location.reload()}})}
 </script></body></html>

@@ -55,10 +55,13 @@ $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)r
  const order=[chosen,...fb];let ok=false,lastErr='';
  for(const m of order){tried.push(m);w.textContent='... ('+m+')';
   for(let attempt=0;attempt<2;attempt++){
-   r=await fetch(`${API}models/${m}:generateContent`,
-    {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
+   const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),45000);
+   try{r=await fetch(`${API}models/${m}:generateContent`,
+    {method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
     body:JSON.stringify({systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents:hist.slice(-30)})});
-   j=await r.json();if(r.ok){ok=true;used=m;break}
+   const raw=await r.text();try{j=JSON.parse(raw)}catch(e){j={_raw:raw.slice(0,300)}}}
+   catch(e){clearTimeout(tm);lastErr=e.name==='AbortError'?'timeout 45s':String(e.message||e);if(e.name==='AbortError')break;throw e}
+   clearTimeout(tm);if(r.ok){ok=true;used=m;break}
    const msg=j.error?.message||String(r.status);lastErr=msg;
    const busy=(r.status===429||r.status===503)&&/high demand|overloaded|resource exhausted|quota|try again later|temporar/i.test(msg);
    if(busy){if(attempt===0)await new Promise(z=>setTimeout(z,1500));continue}
@@ -66,8 +69,15 @@ $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)r
    throw new Error(msg)}
   if(ok)break}
  if(!ok)throw new Error('busy');
-  const a=j.candidates?.[0]?.content?.parts?.map(p=>p.text).join('')||'(no reply)';
-  w.textContent=a;const lb=document.createElement('div');lb.className='mm';lb.textContent=(used===chosen?'model: ':'fallback model: ')+used;w.append(lb);hist.push({role:'model',parts:[{text:a}]});S.hist=hist.slice(-30);save()}
+  const ex=j=>{let t='';const pf=j.promptFeedback;const cs=Array.isArray(j.candidates)?j.candidates:[];
+   for(const c of cs){const ps=c.content?.parts||[];for(const p of ps){if(p&&typeof p.text==='string'&&!p.thought)t+=p.text}}
+   if(!t&&Array.isArray(j.outputs))for(const o of j.outputs){if(o&&typeof o.text==='string'&&o.type!=='thought')t+=o.text}
+   if(!t&&Array.isArray(j.steps))for(const st of j.steps)for(const o of (st.content||[]))if(o&&typeof o.text==='string')t+=o.text;
+   if(!t&&typeof j.text==='string')t=j.text;
+   const c0=cs[0]||{};const d='finishReason='+(c0.finishReason||'-')+'; block='+(pf?.blockReason||'-')+'; candidates='+cs.length+'; parts='+((c0.content?.parts||[]).map(p=>Object.keys(p).join('+')).join(',')||'-')+'; keys='+Object.keys(j).join(',')+'; raw='+JSON.stringify(j).slice(0,400);
+   return{t:t.trim(),d}};
+  const px=ex(j);const a=px.t||('(الرد فاضي) '+px.d);
+  w.textContent=a;const lb=document.createElement('div');lb.className='mm';lb.textContent=(used===chosen?'model: ':'fallback model: ')+used;w.append(lb);if(px.t)hist.push({role:'model',parts:[{text:a}]});else hist.pop();S.hist=hist.slice(-30);save()}
  catch(x){w.className='m e';w.textContent=x.message==='busy'?'الخدمة عليها ضغط حاليًا. استنى دقيقة وجرّب تاني.':'خطأ: '+x.message;hist.pop()}};
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>

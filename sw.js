@@ -1,4 +1,4 @@
-const C='cs-v7',F=['./','index.html','manifest.json','icon.svg'];
+const C='cs-v8',F=['./','index.html','manifest.json','icon.svg'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(F)))});
 self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!=C).map(x=>caches.delete(x)))).then(()=>self.clients.claim())));
 self.addEventListener('fetch',e=>{if(e.request.url.includes('googleapis.com'))return;

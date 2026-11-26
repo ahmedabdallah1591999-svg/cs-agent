@@ -1,4 +1,4 @@
-const C='cs-v9',F=['./','index.html','manifest.json','icon.svg'];
+const C='cs-v10',F=['./','index.html','manifest.json','icon.svg'];
 const LIBS=['https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js','https://cdn.jsdelivr.net/gh/google/fonts@main/ofl/amiri/Amiri-Regular.ttf'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(C).then(c=>c.addAll(F)))});
 self.addEventListener('activate',e=>e.waitUntil(

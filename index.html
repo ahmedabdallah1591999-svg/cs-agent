@@ -1,0 +1,50 @@
+<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.json"><title>خبير خدمة العملاء</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,sans-serif;background:#0f172a;color:#e2e8f0;height:100dvh;display:flex;flex-direction:column}
+header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:#1e293b}
+header b{font-size:18px}button{font:inherit;border:0;border-radius:10px;padding:10px 14px;background:#38bdf8;color:#0f172a;font-weight:600}
+button.g{background:#334155;color:#e2e8f0}
+#log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+.m{max-width:88%;padding:10px 14px;border-radius:14px;white-space:pre-wrap;line-height:1.55}
+.u{align-self:flex-start;background:#38bdf8;color:#0f172a}.a{align-self:flex-end;background:#1e293b}.e{align-self:center;background:#7f1d1d}
+form{display:flex;gap:8px;padding:10px;background:#1e293b}
+textarea{flex:1;resize:none;border:0;border-radius:12px;padding:10px;font:inherit;background:#0f172a;color:#e2e8f0;max-height:120px}
+dialog{background:#1e293b;color:#e2e8f0;border:0;border-radius:14px;width:92%;max-width:480px}
+dialog input,dialog textarea,dialog select{width:100%;margin:6px 0 12px;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font:inherit}
+label{font-size:14px;color:#94a3b8}
+</style></head><body>
+<header><b>🎧 خبير خدمة العملاء</b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
+<div id="log"></div>
+<form id="f"><textarea id="t" rows="1" placeholder="اكتب رسالة العميل أو سؤالك..."></textarea><button>إرسال</button></form>
+<dialog id="d"><form method="dialog" id="df">
+<label>مفتاح Gemini API (بيتخزن على جهازك بس)</label><input id="k" type="password" autocomplete="off">
+<label>الموديل</label><input id="mo" placeholder="gemini-2.5-flash">
+<label>تعليمات إضافية عن شركتك (سياسات، أسعار، نبرة)</label><textarea id="co" rows="5"></textarea>
+<button>حفظ</button></form></dialog>
+<script>
+const $=i=>document.getElementById(i),S=JSON.parse(localStorage.cs||'{}');
+const save=()=>localStorage.cs=JSON.stringify(S);
+const SYS=`You are the manager and senior expert of a customer-service department. You think like a head of support: team, process, quality and customer outcomes. Reply in the language of the user's message (Egyptian Arabic if they write Arabic colloquially). Be decisive, practical and concise.
+You cover: handling and de-escalating customer complaints and writing ready-to-send replies; hiring, training, scheduling and coaching agents; KPIs and QA (CSAT, NPS, FCR, AHT, SLA); escalation and refund policies; scripts, macros and knowledge base; call-center and chat operations; reporting and improvement plans; handling difficult agents and customers.
+When the user pastes a customer message, give a ready-to-send reply, then one line on tone. When asked for a plan, give clear steps with owners and metrics.
+Never invent company policies, prices or order data: say what you need or use a clearly marked [placeholder]. Ask at most one clarifying question when essential.`;
+let hist=S.hist||[];
+function add(c,t){const d=document.createElement('div');d.className='m '+c;d.textContent=t;$('log').append(d);$('log').scrollTop=1e9;return d}
+hist.forEach(h=>add(h.role=='user'?'u':'a',h.parts[0].text));
+$('set').onclick=()=>{$('k').value=S.key||'';$('mo').value=S.model||'';$('co').value=S.co||'';$('d').showModal()};
+$('df').onsubmit=()=>{S.key=$('k').value.trim();S.model=$('mo').value.trim();S.co=$('co').value;save()};
+$('clr').onclick=()=>{hist=[];S.hist=[];save();$('log').innerHTML=''};
+$('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)return;
+ if(!S.key){$('set').click();return}
+ $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});const w=add('a','...');
+ try{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${S.model||'gemini-2.5-flash'}:generateContent`,
+  {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
+  body:JSON.stringify({systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents:hist.slice(-30)})});
+  const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);
+  const a=j.candidates?.[0]?.content?.parts?.map(p=>p.text).join('')||'(no reply)';
+  w.textContent=a;hist.push({role:'model',parts:[{text:a}]});S.hist=hist.slice(-30);save()}
+ catch(x){w.className='m e';w.textContent='خطأ: '+x.message;hist.pop()}};
+if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
+</script></body></html>

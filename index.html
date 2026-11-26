@@ -16,12 +16,12 @@ dialog input,dialog textarea,dialog select{width:100%;margin:6px 0 12px;padding:
 label{display:block;font-size:14px;color:#94a3b8}
 dialog form{display:block;padding:0}dialog{padding:16px}.kr{display:flex;gap:8px;margin:6px 0 12px}.kr input{margin:0;flex:1;min-width:0}.kr button{padding:10px}#ms{display:none}#ls{font-size:13px;color:#94a3b8;margin:-6px 0 12px;min-height:16px}.mm{font-size:12px;opacity:.7;margin-top:6px;direction:ltr;text-align:left}#df>button{width:100%}
 </style></head><body>
-<header><b>🎧 خبير خدمة العملاء <span id="vb" style="font-size:11px;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:1px 6px;vertical-align:middle">v7</span></b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
+<header><b>🎧 خبير خدمة العملاء <span id="vb" style="font-size:11px;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:1px 6px;vertical-align:middle">v8</span></b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
 <div id="log"></div>
 <form id="f"><textarea id="t" rows="1" placeholder="اكتب رسالة العميل أو سؤالك..."></textarea><button>إرسال</button></form>
 <dialog id="d"><form method="dialog" id="df">
 <label>مفتاح Gemini API (بيتخزن على جهازك بس)</label><div class="kr"><input id="k" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr"><button type="button" class="g" id="sh">إظهار</button><button type="button" class="g" id="pa">لصق</button></div>
-<label>الموديل</label><input id="mo" dir="ltr" placeholder="gemini-3.8-flash">
+<label>الموديل</label><input id="mo" dir="ltr" placeholder="gemini-3-flash-preview">
 <button type="button" class="g" id="lm" style="width:100%">جلب الموديلات المتاحة لمفتاحك</button><div id="ls"></div><select id="ms" dir="ltr"></select>
 <label>تعليمات إضافية عن شركتك (سياسات، أسعار، نبرة)</label><textarea id="co" rows="5"></textarea>
 <button>حفظ</button></form></dialog>
@@ -31,54 +31,84 @@ const save=()=>localStorage.cs=JSON.stringify(S);
 const SYS=`You are the manager and senior expert of a customer-service department. You think like a head of support: team, process, quality and customer outcomes. Reply in the language of the user's message (Egyptian Arabic if they write Arabic colloquially). Be decisive, practical and concise.
 You cover: handling and de-escalating customer complaints and writing ready-to-send replies; hiring, training, scheduling and coaching agents; KPIs and QA (CSAT, NPS, FCR, AHT, SLA); escalation and refund policies; scripts, macros and knowledge base; call-center and chat operations; reporting and improvement plans; handling difficult agents and customers.
 When the user pastes a customer message, give a ready-to-send reply, then one line on tone. When asked for a plan, give clear steps with owners and metrics.
-Never invent company policies, prices or order data: say what you need or use a clearly marked [placeholder]. Ask at most one clarifying question when essential.`;
-let hist=S.hist||[];
+Accuracy first: never invent numbers, policies, prices or company facts. If you are unsure or data is missing, say so plainly (in Egyptian Arabic when the user writes Arabic) and ask for the missing input. Clearly separate what you know generally from what depends on the user's company policy. Keep answers short and structured. Ask at most one clarifying question when essential.`;
+function cleanHist(h){const out=[];for(const e of h||[]){const t=(e&&e.parts&&e.parts[0]&&typeof e.parts[0].text==='string'?e.parts[0].text:'').trim();if(!t)continue;const r=e.role==='model'?'model':'user';
+ if(!out.length){if(r!=='user')continue;out.push({role:r,parts:[{text:t}]});continue}
+ if(out[out.length-1].role===r)out[out.length-1].parts[0].text+='\n\n'+t;else out.push({role:r,parts:[{text:t}]})}
+ return out.slice(-30)}
+let hist=cleanHist(S.hist||[]);S.hist=hist;save();
 function add(c,t){const d=document.createElement('div');d.className='m '+c;d.textContent=t;$('log').append(d);$('log').scrollTop=1e9;return d}
 hist.forEach(h=>add(h.role=='user'?'u':'a',h.parts[0].text));
-$('set').onclick=()=>{$('k').value=S.key||'';$('mo').value=S.model||'gemini-3.8-flash';$('co').value=S.co||'';fillSel();$('ls').textContent='';$('d').showModal()};
+$('set').onclick=()=>{$('k').value=S.key||'';$('mo').value=S.model||DEF;$('co').value=S.co||'';fillSel();$('ls').textContent='';$('d').showModal()};
 $('df').onsubmit=()=>{S.key=$('k').value.trim();S.model=$('mo').value.trim();S.co=$('co').value;save()};
 $('sh').onclick=()=>{const k=$('k'),h=k.type=='password';k.type=h?'text':'password';$('sh').textContent=h?'إخفاء':'إظهار'};
 $('pa').onclick=async()=>{try{$('k').value=(await navigator.clipboard.readText()).trim()}catch(x){alert('اضغط مطولًا على الخانة واختار لصق')}};
-const DEF='gemini-3.8-flash',API='https://generativelanguage.googleapis.com/v1beta/';
+const DEF='gemini-3-flash-preview',FB2='gemini-3.8-flash',API='https://generativelanguage.googleapis.com/v1beta/';
 async function listModels(key){const out=[];let tok='';do{const r=await fetch(API+'models?pageSize=100'+(tok?'&pageToken='+encodeURIComponent(tok):''),{headers:{'x-goog-api-key':key}});const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);(j.models||[]).forEach(m=>{if((m.supportedGenerationMethods||[]).includes('generateContent'))out.push(m.name.replace(/^models\//,''))});tok=j.nextPageToken||''}while(tok);return out}
 function fillSel(){const ms=$('ms');ms.innerHTML='';(S.models||[]).forEach(m=>{const o=document.createElement('option');o.value=o.textContent=m;ms.append(o)});const cur=$('mo').value.trim();if((S.models||[]).includes(cur))ms.value=cur;ms.style.display=(S.models||[]).length?'block':'none'}
 $('ms').onchange=()=>{$('mo').value=$('ms').value};
 $('lm').onclick=async()=>{const key=$('k').value.trim();if(!key){$('ls').textContent='الصق المفتاح الأول';return}$('ls').textContent='جاري الجلب...';try{S.models=await listModels(key);save();fillSel();$('ls').textContent='تم: '+S.models.length+' موديل. اختار واحد واضغط حفظ.'}catch(x){$('ls').textContent='فشل الجلب: '+x.message}};
 $('clr').onclick=()=>{hist=[];S.hist=[];save();$('log').innerHTML=''};
+function baseBody(contents){return{systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents,generationConfig:{maxOutputTokens:800}}}
+async function callModel(m,contents,onTok){
+ const b=baseBody(contents);let last;
+ for(const tc of[{thinkingBudget:0},{thinkingLevel:'minimal'},null]){
+  if(tc)b.generationConfig.thinkingConfig=tc;else delete b.generationConfig.thinkingConfig;
+  try{return await streamCall(m,b,onTok)}catch(x){last=x;if(x.status===400&&/thinking|generationConfig|invalid.*argument/i.test(String(x.message)))continue;throw x}}
+ throw last}
+async function streamCall(m,body,onTok){
+ const ac=new AbortController();let to=false;
+ const kill=()=>{to=true;ac.abort()};let tm=setTimeout(kill,30000);
+ const mkErr=(st,raw)=>{let msg=raw;try{msg=JSON.parse(raw).error?.message||raw}catch(e){}const x=new Error(String(msg).slice(0,300));x.status=st;return x};
+ const toErr=s=>{const x=new Error(s);x.timeout=true;return x};
+ let r;
+ try{r=await fetch(API+'models/'+m+':streamGenerateContent?alt=sse',{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':S.key},body:JSON.stringify(body)})}
+ catch(e){clearTimeout(tm);if(to||e.name==='AbortError')throw toErr('timeout: مفيش رد خلال 30 ثانية');throw e}
+ if(!r.ok){let raw='';try{raw=await r.text()}catch(e){}clearTimeout(tm);throw mkErr(r.status,raw.slice(0,500))}
+ const rd=r.body.getReader(),dec=new TextDecoder();let buf='',txt='',meta=null;
+ try{
+  while(true){const{done,value}=await rd.read();if(done)break;
+   clearTimeout(tm);tm=setTimeout(kill,30000);
+   buf+=dec.decode(value,{stream:true}).replace(/\r/g,'');
+   let i;while((i=buf.indexOf('\n\n'))>=0){const ev=buf.slice(0,i);buf=buf.slice(i+2);
+    for(const ln of ev.split('\n')){if(!ln.startsWith('data:'))continue;const d=ln.slice(5).trim();if(!d||d==='[DONE]')continue;
+     try{const j=JSON.parse(d);meta=j;const ps=j.candidates&&j.candidates[0]&&j.candidates[0].content&&j.candidates[0].content.parts||[];let c='';
+      for(const p of ps){if(p&&typeof p.text==='string'&&!p.thought)c+=p.text}
+      if(c){txt+=c;onTok(txt)}}catch(e){}}}
+  }
+ }catch(e){clearTimeout(tm);if(to||e.name==='AbortError')throw toErr('timeout: الرد وقف في النص');throw e}
+ clearTimeout(tm);return{text:txt,meta}}
 $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)return;
  if(!S.key){$('set').click();return}
- $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});const w=add('a','...');const t0=Date.now();let curM='';const iv=setInterval(()=>{w.textContent='... '+Math.floor((Date.now()-t0)/1000)+'s'+(curM?' ('+curM+')':'')},1000);
- try{let r,j,used,tried=[];const chosen=S.model||DEF;
- let fb=S.models;if(!fb){try{fb=await listModels(S.key);S.models=fb;save()}catch(x){fb=[]}}
- const bad=/image|tts|live|audio|embed|robotics|computer|imagen|veo|aqa|gemma|customtools/i;
- fb=fb.filter(m=>/flash/i.test(m)&&!bad.test(m)&&m!==chosen).sort((a,b)=>/lite/i.test(a)-/lite/i.test(b)).slice(0,5);
- const order=[chosen,...fb];let ok=false,lastErr='';
- for(const m of order){tried.push(m);curM=m;w.textContent='... 0s ('+m+')';
-  for(let attempt=0;attempt<2;attempt++){
-   const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),45000);
-   try{r=await fetch(`${API}models/${m}:generateContent`,
-    {method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
-    body:JSON.stringify({systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents:hist.slice(-30)})});
-   const raw=await r.text();try{j=JSON.parse(raw)}catch(e){j={_raw:raw.slice(0,300)}}}
-   catch(e){clearTimeout(tm);lastErr=e.name==='AbortError'?'timeout 45s':String(e.message||e);if(e.name==='AbortError')break;throw e}
-   clearTimeout(tm);if(r.ok){ok=true;used=m;break}
-   const msg=j.error?.message||String(r.status);lastErr=msg;
-   const busy=(r.status===429||r.status===503)&&/high demand|overloaded|resource exhausted|quota|try again later|temporar/i.test(msg);
-   if(busy){if(attempt===0)await new Promise(z=>setTimeout(z,1500));continue}
-   if(r.status===404||r.status===403||/no longer available|not found|not supported/i.test(msg))break;
-   throw new Error(msg)}
-  if(ok)break}
- if(!ok)throw new Error(/timeout/i.test(lastErr)?'انتهت مهلة الطلب (45 ثانية) في كل المحاولات. الشبكة أو الخدمة بطيئة.':'busy');
-  const ex=j=>{let t='';const pf=j.promptFeedback;const cs=Array.isArray(j.candidates)?j.candidates:[];
-   for(const c of cs){const ps=c.content?.parts||[];for(const p of ps){if(p&&typeof p.text==='string'&&!p.thought)t+=p.text}}
-   if(!t&&Array.isArray(j.outputs))for(const o of j.outputs){if(o&&typeof o.text==='string'&&o.type!=='thought')t+=o.text}
-   if(!t&&Array.isArray(j.steps))for(const st of j.steps)for(const o of (st.content||[]))if(o&&typeof o.text==='string')t+=o.text;
-   if(!t&&typeof j.text==='string')t=j.text;
-   const c0=cs[0]||{};const d='finishReason='+(c0.finishReason||'-')+'; block='+(pf?.blockReason||'-')+'; candidates='+cs.length+'; parts='+((c0.content?.parts||[]).map(p=>Object.keys(p).join('+')).join(',')||'-')+'; keys='+Object.keys(j).join(',')+'; raw='+JSON.stringify(j).slice(0,400);
-   return{t:t.trim(),d}};
-  clearInterval(iv);const px=ex(j);const a=px.t||('(الرد فاضي) '+px.d);
-  w.textContent=a;const lb=document.createElement('div');lb.className='mm';lb.textContent=(used===chosen?'model: ':'fallback model: ')+used;w.append(lb);if(px.t)hist.push({role:'model',parts:[{text:a}]});else hist.pop();S.hist=hist.slice(-30);save()}
- catch(x){clearInterval(iv);w.className='m e';w.textContent=x.message==='busy'?'الخدمة عليها ضغط حاليًا. استنى دقيقة وجرّب تاني.':'خطأ: '+x.message;hist.pop()}};
+ $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});
+ const w=add('a','...');const t0=Date.now();let curM='',streaming=false;
+ const iv=setInterval(()=>{if(!streaming)w.textContent='... '+Math.floor((Date.now()-t0)/1000)+'s'+(curM?' ('+curM+')':'')},1000);
+ try{
+  const chosen=S.model||DEF;
+  let fb=S.models;if(!fb){try{fb=await listModels(S.key);S.models=fb;save()}catch(x){fb=[]}}
+  const bad=/image|tts|live|audio|embed|robotics|computer|imagen|veo|aqa|gemma|customtools/i;
+  fb=(fb||[]).filter(m=>/flash/i.test(m)&&!bad.test(m)&&m!==chosen).sort((a,b)=>/lite/i.test(a)-/lite/i.test(b)).slice(0,5);
+  if(!fb.length&&chosen!==FB2)fb=[FB2];
+  const order=[chosen,...fb],contents=cleanHist(hist),errs=[];
+  let ok=false,used='',txt='',meta=null;
+  for(const m of order){curM=m;streaming=false;w.textContent='⏳ بجرب '+m+' ...';
+   try{const r=await callModel(m,contents,t=>{if(!streaming){streaming=true;clearInterval(iv)}w.textContent=t});
+    ok=true;used=m;txt=r.text;meta=r.meta;break}
+   catch(x){const msg=(x.status?x.status+' ':'')+String(x.message||x);errs.push(m+' → '+msg);
+    if(/api.key|PERMISSION_DENIED|unauthenticated/i.test(msg))break;
+    if(x.timeout)w.textContent=m+' مردش خلال 30 ثانية، بجرب موديل تاني...';
+    else if(x.status===429||x.status===503)w.textContent=m+' عليه ضغط دلوقتي، بجرب موديل تاني...';
+    else w.textContent=m+' فشل: '+msg.slice(0,80);
+    await new Promise(z=>setTimeout(z,x.status===429||x.status===503?1500:700))}}
+  clearInterval(iv);
+  if(!ok){w.className='m e';w.textContent='فشل الرد من كل الموديلات:\n'+errs.join('\n');hist.pop();S.hist=hist;save();return}
+  let a=txt.trim();
+  if(!a){const c0=meta&&meta.candidates&&meta.candidates[0]||{};const pf=meta&&meta.promptFeedback;
+   const d='finishReason='+(c0.finishReason||'-')+'; block='+(pf&&pf.blockReason||'-')+'; candidates='+((meta&&meta.candidates||[]).length)+'; raw='+JSON.stringify(meta||{}).slice(0,400);
+   a='(الرد فاضي) '+d;w.textContent=a;hist.pop()}
+  else{w.textContent=a;hist.push({role:'model',parts:[{text:a}]})}
+  const lb=document.createElement('div');lb.className='mm';lb.textContent=(used===chosen?'model: ':'fallback model: ')+used;w.append(lb);
+  S.hist=hist.slice(-30);save()}
+ catch(x){clearInterval(iv);w.className='m e';w.textContent='خطأ: '+String(x.message||x);hist.pop();S.hist=hist;save()}};
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!window.__r){window.__r=1;location.reload()}})}
 </script></body></html>
-

@@ -14,7 +14,7 @@ textarea{flex:1;resize:none;border:0;border-radius:12px;padding:10px;font:inheri
 dialog{background:#1e293b;color:#e2e8f0;border:0;border-radius:14px;width:92%;max-width:480px}
 dialog input,dialog textarea,dialog select{width:100%;margin:6px 0 12px;padding:10px;border-radius:10px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font:inherit}
 label{display:block;font-size:14px;color:#94a3b8}
-dialog form{display:block;padding:0}dialog{padding:16px}.kr{display:flex;gap:8px;margin:6px 0 12px}.kr input{margin:0;flex:1;min-width:0}.kr button{padding:10px}#df>button{width:100%}
+dialog form{display:block;padding:0}dialog{padding:16px}.kr{display:flex;gap:8px;margin:6px 0 12px}.kr input{margin:0;flex:1;min-width:0}.kr button{padding:10px}#ms{display:none}#ls{font-size:13px;color:#94a3b8;margin:-6px 0 12px;min-height:16px}.mm{font-size:12px;opacity:.7;margin-top:6px;direction:ltr;text-align:left}#df>button{width:100%}
 </style></head><body>
 <header><b>🎧 خبير خدمة العملاء</b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
 <div id="log"></div>
@@ -22,6 +22,7 @@ dialog form{display:block;padding:0}dialog{padding:16px}.kr{display:flex;gap:8px
 <dialog id="d"><form method="dialog" id="df">
 <label>مفتاح Gemini API (بيتخزن على جهازك بس)</label><div class="kr"><input id="k" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" dir="ltr"><button type="button" class="g" id="sh">إظهار</button><button type="button" class="g" id="pa">لصق</button></div>
 <label>الموديل</label><input id="mo" dir="ltr" placeholder="gemini-3.8-flash">
+<button type="button" class="g" id="lm" style="width:100%">جلب الموديلات المتاحة لمفتاحك</button><div id="ls"></div><select id="ms" dir="ltr"></select>
 <label>تعليمات إضافية عن شركتك (سياسات، أسعار، نبرة)</label><textarea id="co" rows="5"></textarea>
 <button>حفظ</button></form></dialog>
 <script>
@@ -34,25 +35,40 @@ Never invent company policies, prices or order data: say what you need or use a 
 let hist=S.hist||[];
 function add(c,t){const d=document.createElement('div');d.className='m '+c;d.textContent=t;$('log').append(d);$('log').scrollTop=1e9;return d}
 hist.forEach(h=>add(h.role=='user'?'u':'a',h.parts[0].text));
-$('set').onclick=()=>{$('k').value=S.key||'';$('mo').value=S.model||'gemini-3.8-flash';$('co').value=S.co||'';$('d').showModal()};
+$('set').onclick=()=>{$('k').value=S.key||'';$('mo').value=S.model||'gemini-3.8-flash';$('co').value=S.co||'';fillSel();$('ls').textContent='';$('d').showModal()};
 $('df').onsubmit=()=>{S.key=$('k').value.trim();S.model=$('mo').value.trim();S.co=$('co').value;save()};
 $('sh').onclick=()=>{const k=$('k'),h=k.type=='password';k.type=h?'text':'password';$('sh').textContent=h?'إخفاء':'إظهار'};
 $('pa').onclick=async()=>{try{$('k').value=(await navigator.clipboard.readText()).trim()}catch(x){alert('اضغط مطولًا على الخانة واختار لصق')}};
+const DEF='gemini-3.8-flash',API='https://generativelanguage.googleapis.com/v1beta/';
+async function listModels(key){const out=[];let tok='';do{const r=await fetch(API+'models?pageSize=100'+(tok?'&pageToken='+encodeURIComponent(tok):''),{headers:{'x-goog-api-key':key}});const j=await r.json();if(!r.ok)throw new Error(j.error?.message||r.status);(j.models||[]).forEach(m=>{if((m.supportedGenerationMethods||[]).includes('generateContent'))out.push(m.name.replace(/^models\//,''))});tok=j.nextPageToken||''}while(tok);return out}
+function fillSel(){const ms=$('ms');ms.innerHTML='';(S.models||[]).forEach(m=>{const o=document.createElement('option');o.value=o.textContent=m;ms.append(o)});const cur=$('mo').value.trim();if((S.models||[]).includes(cur))ms.value=cur;ms.style.display=(S.models||[]).length?'block':'none'}
+$('ms').onchange=()=>{$('mo').value=$('ms').value};
+$('lm').onclick=async()=>{const key=$('k').value.trim();if(!key){$('ls').textContent='الصق المفتاح الأول';return}$('ls').textContent='جاري الجلب...';try{S.models=await listModels(key);save();fillSel();$('ls').textContent='تم: '+S.models.length+' موديل. اختار واحد واضغط حفظ.'}catch(x){$('ls').textContent='فشل الجلب: '+x.message}};
 $('clr').onclick=()=>{hist=[];S.hist=[];save();$('log').innerHTML=''};
 $('f').onsubmit=async e=>{e.preventDefault();const v=$('t').value.trim();if(!v)return;
  if(!S.key){$('set').click();return}
  $('t').value='';add('u',v);hist.push({role:'user',parts:[{text:v}]});const w=add('a','...');
- try{let r,j;for(let attempt=0;attempt<4;attempt++){
-  r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${S.model||'gemini-3.8-flash'}:generateContent`,
-   {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
-   body:JSON.stringify({systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents:hist.slice(-30)})});
-  j=await r.json();if(r.ok)break;
-  const busy=(r.status===429||r.status===503)&&/high demand|overloaded|resource exhausted|try again later|temporar/i.test(j.error?.message||'');
-  if(!busy||attempt===3)throw new Error(busy?'busy':(j.error?.message||r.status));
-  await new Promise(resolve=>setTimeout(resolve,1000*(2**attempt)));
- }
+ try{let r,j,used,tried=[];const chosen=S.model||DEF;
+ let fb=S.models;if(!fb){try{fb=await listModels(S.key);S.models=fb;save()}catch(x){fb=[]}}
+ const bad=/image|tts|live|audio|embed|robotics|computer|imagen|veo|aqa|gemma|customtools/i;
+ fb=fb.filter(m=>/flash/i.test(m)&&!bad.test(m)&&m!==chosen).sort((a,b)=>/lite/i.test(a)-/lite/i.test(b)).slice(0,5);
+ const order=[chosen,...fb];let ok=false,lastErr='';
+ for(const m of order){tried.push(m);w.textContent='... ('+m+')';
+  for(let attempt=0;attempt<2;attempt++){
+   r=await fetch(`${API}models/${m}:generateContent`,
+    {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':S.key},
+    body:JSON.stringify({systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents:hist.slice(-30)})});
+   j=await r.json();if(r.ok){ok=true;used=m;break}
+   const msg=j.error?.message||String(r.status);lastErr=msg;
+   const busy=(r.status===429||r.status===503)&&/high demand|overloaded|resource exhausted|quota|try again later|temporar/i.test(msg);
+   if(busy){if(attempt===0)await new Promise(z=>setTimeout(z,1500));continue}
+   if(r.status===404||r.status===403||/no longer available|not found|not supported/i.test(msg))break;
+   throw new Error(msg)}
+  if(ok)break}
+ if(!ok)throw new Error('busy');
   const a=j.candidates?.[0]?.content?.parts?.map(p=>p.text).join('')||'(no reply)';
-  w.textContent=a;hist.push({role:'model',parts:[{text:a}]});S.hist=hist.slice(-30);save()}
+  w.textContent=a;const lb=document.createElement('div');lb.className='mm';lb.textContent=(used===chosen?'model: ':'fallback model: ')+used;w.append(lb);hist.push({role:'model',parts:[{text:a}]});S.hist=hist.slice(-30);save()}
  catch(x){w.className='m e';w.textContent=x.message==='busy'?'الخدمة عليها ضغط حاليًا. استنى دقيقة وجرّب تاني.':'خطأ: '+x.message;hist.pop()}};
 if('serviceWorker'in navigator)navigator.serviceWorker.register('sw.js');
 </script></body></html>
+

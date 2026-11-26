@@ -22,7 +22,7 @@ dialog input,dialog textarea,dialog select{width:100%;margin:6px 0 12px;padding:
 label{display:block;font-size:14px;color:#94a3b8}
 dialog form{display:block;padding:0}dialog{padding:16px}.kr{display:flex;gap:8px;margin:6px 0 12px}.kr input{margin:0;flex:1;min-width:0}.kr button{padding:10px}#ms{display:none}#ls{font-size:13px;color:#94a3b8;margin:-6px 0 12px;min-height:16px}.mm{font-size:12px;opacity:.7;margin-top:6px;direction:ltr;text-align:left}#df>button{width:100%}
 </style></head><body>
-<header><b>🎧 خبير خدمة العملاء <span id="vb" style="font-size:11px;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:1px 6px;vertical-align:middle">v9</span></b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
+<header><b>🎧 خبير خدمة العملاء <span id="vb" style="font-size:11px;color:#38bdf8;border:1px solid #38bdf8;border-radius:6px;padding:1px 6px;vertical-align:middle">v10</span></b><span><button class="g" id="clr">جديد</button> <button class="g" id="set">⚙️</button></span></header>
 <div id="log"></div>
 <div id="chips"></div>
 <form id="f"><input type="file" id="fi" multiple style="display:none" accept="image/*,audio/*,video/*,.pdf,.docx,.xlsx,.csv,.txt,.md,.json">
@@ -72,7 +72,10 @@ $('clr').onclick=()=>{hist=[];S.hist=[];save();$('log').innerHTML=''};
 /* ---------- small utils ---------- */
 function fmtSize(n){if(n<1024)return n+' بايت';if(n<1048576)return (n/1024).toFixed(0)+' كيلوبايت';if(n<1073741824)return (n/1048576).toFixed(1)+' ميجا';return (n/1073741824).toFixed(2)+' جيجا'}
 function escXml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
-function dl(blob,name){const u=URL.createObjectURL(blob);const d=add('f','');const a=document.createElement('a');a.href=u;a.download=name;a.textContent='⬇️ تحميل '+name;a.append(Object.assign(document.createElement('small'),{textContent:fmtSize(blob.size)+' — اضغط للتحميل'}));d.append(a);return d}
+function dl(blob,name,play){const u=URL.createObjectURL(blob);const d=add('f','');
+ if(play){const au=document.createElement('audio');au.controls=true;au.preload='metadata';au.src=u;au.style.cssText='width:100%;display:block;margin-bottom:8px';d.append(au)}
+ const a=document.createElement('a');a.href=u;a.download=name;a.rel='noopener';a.textContent='⬇️ تحميل '+name;
+ a.append(Object.assign(document.createElement('small'),{textContent:fmtSize(blob.size)+' — اضغط للتحميل'}));d.append(a);return d}
 /* ---------- CRC32 + minimal ZIP writer (stored, no compression) ---------- */
 const CT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c}return t})();
 function crc32(b){let c=~0;for(let i=0;i<b.length;i++)c=CT[(c^b[i])&255]^(c>>>8);return ~c>>>0}
@@ -201,7 +204,8 @@ function wavFromPcm(pcm,rate){const h=new Uint8Array(44),d=new DataView(h.buffer
  ws(36,'data');d.setUint32(40,pcm.length,true);
  return new Blob([h,pcm],{type:'audio/wav'})}
 function pickTtsModel(){const t=(S.models||[]).filter(m=>/tts/i.test(m));t.sort((a,b)=>(/flash/i.test(b)?1:0)-(/flash/i.test(a)?1:0));return t[0]||null}
-async function makeAudio(text){const m=pickTtsModel();
+async function makeAudio(text){let m=pickTtsModel();
+ if(!m&&S.key){try{S.models=await listModels(S.key);save();m=pickTtsModel()}catch(e){}}
  if(!m)throw new Error('مفيش موديل صوت (TTS) متاح على مفتاحك. افتح ⚙️ واضغط "جلب الموديلات" — ولو مفيش tts في القايمة يبقى توليد الصوت مش متاح لمفتاحك');
  if([...text].length>3500)throw new Error('النص طويل للصوت — قصّره تحت 3500 حرف');
  const ac=new AbortController();const tm=setTimeout(()=>ac.abort(),60000);
@@ -267,6 +271,12 @@ $('fi').onchange=()=>{for(const f of $('fi').files){
   pending.push({file:f,kind:k,mime:f.type||(k==='pdf'?'application/pdf':'application/octet-stream')})}
  $('fi').value='';renderChips()};
 /* ---------- file block from model reply ---------- */
+const AUDIO_RE=/صوت|أوديو|اوديو|سجّ?ل|تسجيل|اقرأ|اقرا|استمع|سمع|نطق|انطق|اتكلم|تكلم|audio|voice|mp3|wav|aloud|speak|spoken|listen/i;
+function speechText(t){let s=String(t).replace(/<<<FILE[\s\S]*?<<<END>>>/g,' ').replace(/<<<[\s\S]*?>>>/g,' ');
+ s=s.replace(/[#*`_>~]/g,'').replace(/https?:\/\/\S+/g,' ');
+ s=s.replace(/\s+/g,' ').trim();const arr=[...s];
+ if(arr.length>3400){const cut=arr.slice(0,3400).join('');const m=cut.match(/^([\s\S]*[.!؟?])/);s=m?m[1]:cut}
+ return s}
 function extractFileBlock(txt){const m=txt.match(/<<<FILE\s+type="(docx|xlsx|pdf|audio)"\s+name="([^"<>]{1,80})">>>([\s\S]*?)<<<END>>>/);
  if(!m)return null;return{type:m[1],name:m[2].trim(),content:m[3].replace(/^\s+|\s+$/g,''),pre:txt.slice(0,m.index).replace(/\s+$/,'')}}
 async function deliverFile(fb){let blob;const mime={docx:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',xlsx:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',pdf:'application/pdf',audio:'audio/wav'}[fb.type];
@@ -275,7 +285,7 @@ async function deliverFile(fb){let blob;const mime={docx:'application/vnd.openxm
  else if(fb.type==='pdf')blob=await makePdf(fb.content,fb.name);
  else blob=await makeAudio(fb.content);
  if(!/\.(docx|xlsx|pdf|wav)$/i.test(fb.name))fb.name+={docx:'.docx',xlsx:'.xlsx',pdf:'.pdf',audio:'.wav'}[fb.type];
- dl(new Blob([blob],{type:mime}),fb.name)}
+ dl(new Blob([blob],{type:mime}),fb.name,fb.type==='audio')}
 /* ---------- model calls ---------- */
 function baseBody(contents){return{systemInstruction:{parts:[{text:SYS+(S.co?'\n\nCompany info:\n'+S.co:'')}]},contents,generationConfig:{maxOutputTokens:8192}}}
 async function callModel(m,contents,onTok){
@@ -344,7 +354,9 @@ $('f').onsubmit=async e=>{e.preventDefault();
   clearInterval(iv);
   if(!ok){w.className='m e';w.textContent='فشل الرد من كل الموديلات:\n'+errs.join('\n');return}
   let a=txt.trim();let fblk=extractFileBlock(a);
+  const wantAudio=AUDIO_RE.test(v);
   if(fblk)a=fblk.pre;
+  else if(wantAudio&&a){const st=speechText(a);if(st)fblk={type:'audio',name:'رد-صوتي.wav',content:st,pre:a}}
   if(!a&&!fblk){const c0=meta&&meta.candidates&&meta.candidates[0]||{};const pf=meta&&meta.promptFeedback;
    const d='finishReason='+(c0.finishReason||'-')+'; block='+(pf&&pf.blockReason||'-')+'; candidates='+((meta&&meta.candidates||[]).length)+'; raw='+JSON.stringify(meta||{}).slice(0,400);
    a='(الرد فاضي) '+d;w.textContent=a}
@@ -353,10 +365,10 @@ $('f').onsubmit=async e=>{e.preventDefault();
   hist.push({role:'user',parts:[{text:(v?v+'\n':'')+(notes.length?'[مرفقات: '+notes.join('، ')+']':'')||v}]});
   let mtxt=a;
   if(fblk){try{await deliverFile(fblk);mtxt=(a?a+'\n':'')+'[تم إنشاء ملف: '+fblk.name+']'}
-   catch(x){add('e','فشل إنشاء الملف: '+x.message);mtxt=(a?a+'\n':'')+'[فشل إنشاء الملف: '+fblk.name+']'}}
+   catch(x){const em=(fblk.type==='audio'?'فشل توليد الصوت: ':'فشل إنشاء الملف: ')+x.message;add('e',em);mtxt=(a?a+'\n':'')+'['+em+']'}}
   hist.push({role:'model',parts:[{text:mtxt||'(ملف)'}]});
   S.hist=hist.slice(-30);save()}
  catch(x){clearInterval(iv);w.className='m e';w.textContent='خطأ: '+String(x.message||x)}};
-window.__gen={makeDocx,makeXlsx,makePdf,zipStore,unzipEntries,extractDocxText,extractXlsxText,extractFileBlock,parseCsv,wavFromPcm};
+window.__gen={makeDocx,makeXlsx,makePdf,zipStore,unzipEntries,extractDocxText,extractXlsxText,extractFileBlock,parseCsv,wavFromPcm,AUDIO_RE,speechText,dl};
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').then(r=>r.update()).catch(()=>{});navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!window.__r){window.__r=1;location.reload()}})}
 </script></body></html>
